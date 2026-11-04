@@ -1,0 +1,4 @@
+host: ${INTERNAL_DB_HOST}
+port: ${INTERNAL_DB_PORT}
+username: ${INTERNAL_DB_USERNAME}
+password: ${INTERNAL_DB_PASSWORD}

@@ -1,0 +1,209 @@
+services:
+
+  etl_app:
+    build: ./data_processing_pipeline
+    container_name: etl_app_service
+    depends_on:
+      internal_db:
+        condition: service_healthy
+      api_db:
+        condition: service_healthy
+      migration_runner_internal_db:
+        condition: service_completed_successfully
+      migration_runner_api_db:
+        condition: service_completed_successfully
+    environment:
+      INTERNAL_DB: ${INTERNAL_DB}
+      INTERNAL_DB_USERNAME: ${INTERNAL_DB_USERNAME}
+      INTERNAL_DB_PASSWORD: ${INTERNAL_DB_PASSWORD}
+      INTERNAL_DB_HOST: ${INTERNAL_DB_HOST}
+      INTERNAL_DB_PORT: ${INTERNAL_DB_PORT}
+      API_DB: ${API_DB}
+      API_DB_USERNAME: ${API_DB_USERNAME}
+      API_DB_PASSWORD: ${API_DB_PASSWORD}
+      API_DB_HOST: ${API_DB_HOST}
+      API_DB_PORT: "5432"
+    volumes:
+      - ./data:/app/data:ro
+      - ./db_config:/db_config:ro
+      - ./data_processing_pipeline/config.yml:/app/config.yml:ro
+
+
+  etl_tests:
+    build: ./data_processing_pipeline
+    container_name: etl_test_service
+    depends_on:
+      internal_db:
+        condition: service_healthy
+      api_db:
+        condition: service_healthy
+      migration_runner_internal_db:
+        condition: service_completed_successfully
+      migration_runner_api_db:
+        condition: service_completed_successfully
+    environment:
+      INTERNAL_DB: ${INTERNAL_DB}
+      INTERNAL_DB_USERNAME: ${INTERNAL_DB_USERNAME}
+      INTERNAL_DB_PASSWORD: ${INTERNAL_DB_PASSWORD}
+      INTERNAL_DB_HOST: ${INTERNAL_DB_HOST}
+      INTERNAL_DB_PORT: ${INTERNAL_DB_PORT}
+      API_DB: ${API_DB}
+      API_DB_USERNAME: ${API_DB_USERNAME}
+      API_DB_PASSWORD: ${API_DB_PASSWORD}
+      API_DB_HOST: ${API_DB_HOST}
+      API_DB_PORT: "5432"
+    command: pytest --cov=app --cov-report=term-missing
+    volumes:
+      - ./db_config:/db_config:ro
+      - ./data_processing_pipeline/config.yml:/app/config.yml:ro
+
+
+  api_app:
+    build: ./product_api
+    container_name: api_app_service
+    ports:
+      - "8000:8000"
+    depends_on:
+      api_db:
+        condition: service_healthy
+      migration_runner_api_db:
+        condition: service_completed_successfully
+    environment:
+      API_DB: ${API_DB}
+      API_DB_USERNAME: ${API_DB_USERNAME}
+      API_DB_PASSWORD: ${API_DB_PASSWORD}
+      API_DB_HOST: ${API_DB_HOST}
+      API_DB_PORT: "5432"
+
+
+  api_tests:
+    build: ./product_api
+    container_name: api_test_service
+    depends_on:
+      api_db:
+        condition: service_healthy
+    environment:
+      API_DB: ${API_DB}
+      API_DB_USERNAME: ${API_DB_USERNAME}
+      API_DB_PASSWORD: ${API_DB_PASSWORD}
+      API_DB_HOST: ${API_DB_HOST}
+      API_DB_PORT: "5432"
+    command: pytest --cov=app --cov-report=term-missing
+
+
+  migration_runner_internal_db:
+    build: ./migration_runner
+    container_name: migration_runner_internal_db_service
+    depends_on:
+      internal_db:
+        condition: service_healthy
+    environment:
+      INTERNAL_DB: ${INTERNAL_DB}
+      INTERNAL_DB_USERNAME: ${INTERNAL_DB_USERNAME}
+      INTERNAL_DB_PASSWORD: ${INTERNAL_DB_PASSWORD}
+      INTERNAL_DB_HOST: ${INTERNAL_DB_HOST}
+      INTERNAL_DB_PORT: ${INTERNAL_DB_PORT}
+    volumes:
+      - ./migrations:/migrations:ro
+      - ./db_config:/db_config:ro
+    command: python -m app.main --db_names internal_db
+
+  migration_runner_api_db:
+    build: ./migration_runner
+    container_name: migration_runner_api_db_service
+    depends_on:
+      api_db:
+        condition: service_healthy
+    environment:
+      API_DB: ${API_DB}
+      API_DB_USERNAME: ${API_DB_USERNAME}
+      API_DB_PASSWORD: ${API_DB_PASSWORD}
+      API_DB_HOST: ${API_DB_HOST}
+      API_DB_PORT: "5432"
+    volumes:
+      - ./migrations:/migrations:ro
+      - ./db_config:/db_config:ro
+    command: python -m app.main --db_names api_db
+
+
+  migration_runner_tests:
+    build: ./migration_runner
+    container_name: migration_runner_test_service
+    depends_on:
+      internal_db:
+        condition: service_healthy
+      api_db:
+        condition: service_healthy
+    environment:
+      INTERNAL_DB: ${INTERNAL_DB}
+      INTERNAL_DB_USERNAME: ${INTERNAL_DB_USERNAME}
+      INTERNAL_DB_PASSWORD: ${INTERNAL_DB_PASSWORD}
+      INTERNAL_DB_HOST: ${INTERNAL_DB_HOST}
+      INTERNAL_DB_PORT: ${INTERNAL_DB_PORT}
+      API_DB: ${API_DB}
+      API_DB_USERNAME: ${API_DB_USERNAME}
+      API_DB_PASSWORD: ${API_DB_PASSWORD}
+      API_DB_HOST: ${API_DB_HOST}
+      API_DB_PORT: "5432"
+    command: pytest --cov=app --cov-report=term-missing
+    volumes:
+      - ./migrations:/migrations:ro
+      - ./db_config:/db_config:ro
+
+
+  internal_db:
+    image: postgres:16
+    container_name: internal_db_service
+    environment:
+      POSTGRES_DB: ${INTERNAL_DB}
+      POSTGRES_USER: ${INTERNAL_DB_USERNAME}
+      POSTGRES_PASSWORD: ${INTERNAL_DB_PASSWORD}
+    ports:
+      - "${INTERNAL_DB_PORT}:5432"
+    volumes:
+      - internal_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${INTERNAL_DB_USERNAME} -d ${INTERNAL_DB_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+
+  api_db:
+    image: postgres:16
+    container_name: api_db_service
+    environment:
+      POSTGRES_DB: ${API_DB}
+      POSTGRES_USER: ${API_DB_USERNAME}
+      POSTGRES_PASSWORD: ${API_DB_PASSWORD}
+    ports:
+      - "${API_DB_PORT}:5432"
+    volumes:
+      - api_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${API_DB_USERNAME} -d ${API_DB_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin_service
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_USER_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+
+
+
+volumes:
+  internal_db_data:
+  api_db_data:
+  pgadmin_data:

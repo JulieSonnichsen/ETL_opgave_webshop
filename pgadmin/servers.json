@@ -1,0 +1,22 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Internal DB",
+      "Group": "Servers",
+      "Host": "internal_db",
+      "Port": 5432,
+      "MaintenanceDB": "internal_db",
+      "Username": "admin",
+      "SSLMode": "prefer"
+    },
+    "2": {
+      "Name": "API DB",
+      "Group": "Servers",
+      "Host": "api_db",
+      "Port": 5432,
+      "MaintenanceDB": "api_db",
+      "Username": "admin",
+      "SSLMode": "prefer"
+    }
+  }
+}

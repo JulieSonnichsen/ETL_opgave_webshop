@@ -1,0 +1,17 @@
+orders:
+  historical:
+    days: 14
+    orders_per_day: 14400
+  continuous:
+    interval_seconds: 600
+    orders_per_interval: 10
+  repeat_customer_probability: 0.05
+
+generation:
+  new_address_probability: 0.05
+  new_price_probability: 0.05
+  max_price_change_percent: 0.25
+  max_order_lines: 4
+  max_quantity: 3
+  line_count_decay: 0.2
+  quantity_decay: 0.2

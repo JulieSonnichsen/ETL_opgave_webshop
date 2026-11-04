@@ -1,0 +1,4 @@
+host: ${API_DB_HOST}
+port: ${API_DB_PORT}
+username: ${API_DB_USERNAME}
+password: ${API_DB_PASSWORD}
